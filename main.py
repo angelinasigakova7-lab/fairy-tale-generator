@@ -9,10 +9,10 @@ import base64
 import random
 from pydantic import BaseModel
 
-# ============ СОЗДАЕМ ПРИЛОЖЕНИЕ (ВАЖНО: имя "app") ============
+# ============ СОЗДАЕМ ПРИЛОЖЕНИЕ ============
 app = FastAPI()
-# =============================================================
 
+# ============ НАСТРОЙКИ CORS ============
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,23 +33,24 @@ class GenerationResponse(BaseModel):
     image_base64: str = None
     image_url: str = None
 
-# ============ API ЭНДПОИНТЫ ============
+# ============ ТЕСТОВЫЙ ЭНДПОИНТ ============
 @app.get("/api/test")
 async def test():
     return {
-        "server": "✅ Render работает",
+        "server": "✅ Railway работает",
         "openrouter": "✅ есть" if OPENROUTER_KEY else "❌ нет",
         "huggingface": "✅ есть" if HF_TOKEN else "❌ нет"
     }
 
+# ============ ГЕНЕРАЦИЯ СКАЗКИ ============
 @app.post("/api/generate")
 async def generate(request: TopicRequest):
     print(f"\n🎯 Генерируем сказку: {request.topic}")
     
-    # 1. Генерируем текст через OpenRouter
+    # Генерируем текст
     tale = await generate_text(request.topic)
     
-    # 2. Генерируем картинку через Hugging Face
+    # Генерируем картинку
     image_base64 = await generate_image(request.topic)
     
     return GenerationResponse(
@@ -125,7 +126,7 @@ async def generate_image(topic):
     return None
 
 def generate_fallback_tale(topic):
-    """Запасная сказка"""
+    """Запасная сказка если API не работает"""
     tales = [
         f"В некотором царстве жил-был {topic}. Был он добрый и волшебный. Каждое утро он просыпался и творил чудеса. Однажды он встретил фею, и они подружились. С тех пор они вместе помогают всем в королевстве.",
         
@@ -133,7 +134,7 @@ def generate_fallback_tale(topic):
     ]
     return random.choice(tales)
 
-# ============ ФРОНТЕНД ============
+# ============ ФРОНТЕНД (СТАТИЧЕСКИЕ ФАЙЛЫ) ============
 @app.get("/")
 async def serve_frontend():
     return FileResponse("frontend/index.html")
@@ -144,14 +145,3 @@ async def serve_static(path: str):
     if os.path.exists(file_path) and os.path.isfile(file_path):
         return FileResponse(file_path)
     return FileResponse("frontend/index.html")
-
-# ============ ЗАПУСК (для локального теста) ============
-if __name__ == "__main__":
-    import uvicorn
-    print("="*60)
-    print("🔥 ГЕНЕРАТОР НА RENDER")
-    print("="*60)
-    print("✅ Сервер готов к запуску")
-    print("🌐 http://localhost:8000")
-    print("="*60)
-    uvicorn.run(app, host="0.0.0.0", port=8000)
